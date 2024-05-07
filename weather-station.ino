@@ -2,17 +2,13 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
-#define SEALEVELPRESSURE_HPA (1013.25)
-
 Adafruit_BME280 bme;
 
-struct readings
-{
-  float temperature, humidity, pressure, altitude;
+struct readings {
+  float temperature, humidity, pressure;
 };
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   delay(100);
 
@@ -21,15 +17,14 @@ void setup()
 
 }
 
-void loop()
-{
+void loop() {
   delay(5000);
   dumpReadings(getReadings());
 }
 
 readings getReadings() {
     Serial.println("-- Reading BME280 --");
-    readings r = {bme.readTemperature(), bme.readHumidity(), bme.readPressure() / 100.0F, bme.readAltitude(SEALEVELPRESSURE_HPA)};
+    readings r = {bme.readTemperature(), bme.readHumidity(), bme.readPressure() / 100.0F};
     return r;
 }
 
@@ -41,10 +36,6 @@ void dumpReadings(readings r) {
   Serial.print("Pressure = ");
   Serial.print(r.pressure);
   Serial.println(" hPa");
-
-  Serial.print("Approx. Altitude = ");
-  Serial.print(r.altitude);
-  Serial.println(" m");
 
   Serial.print("Humidity = ");
   Serial.print(r.humidity);
