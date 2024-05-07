@@ -1,6 +1,13 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <TFT_eSPI.h>
+
+TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite spr = TFT_eSprite(&tft);
+
+#define TFT_WIDTH 480
+#define TFT_HEIGHT 320
 
 Adafruit_BME280 bme;
 
