@@ -12,13 +12,21 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
+  Serial.print("BME280 init ");
   Wire.setPins(2, 1);
-  bme.begin(0x76);
+  if(!bme.begin(0x76)) {
+    Serial.println("failed. Please check your wiring and I2C address");
+    while(1);
+  }
+
+  Serial.print("succeeded. Sensor id: ");
+  Serial.print(bme.sensorID());
+  Serial.println(". Done.");
 
 }
 
 void loop() {
-  delay(5000);
+  delay(10000);
   dumpReadings(getReadings());
 }
 
