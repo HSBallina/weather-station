@@ -10,6 +10,7 @@ TFT_eSprite spr = TFT_eSprite(&tft);
 #define TFT_HEIGHT 320
 
 Adafruit_BME280 bmeOut;
+Adafruit_BME280 bmeIn;
 String version = "20240508b";
 
 struct readings {
@@ -23,6 +24,7 @@ struct sensor {
 };
 
 sensor outdoor = {bmeOut, "outdoor", 0x77};
+sensor indoor = {bmeIn, "indoor", 0x76};
 
 void setup() {
   Serial.begin(115200);
@@ -34,11 +36,14 @@ void setup() {
   Wire.setPins(2, 1); // SDA, SCL
 
   initSensor(outdoor);
+  initSensor(indoor);
 }
 
 void loop() {
   dumpReadings(getReadings(outdoor));
-  delay(10000);
+  delay(4000);
+  dumpReadings(getReadings(indoor));
+  delay(4000);
 }
 
 void initSensor(sensor &s) {
