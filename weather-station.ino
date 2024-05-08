@@ -9,37 +9,53 @@ TFT_eSprite spr = TFT_eSprite(&tft);
 #define TFT_WIDTH 480
 #define TFT_HEIGHT 320
 
-Adafruit_BME280 bme;
+Adafruit_BME280 bmeOut;
+String version = "20240508b";
 
 struct readings {
   float temperature, humidity, pressure;
 };
 
+struct sensor {
+  Adafruit_BME280 sensor;
+  String name;
+  uint8_t address;
+};
+
+sensor outdoor = {bmeOut, "outdoor", 0x77};
+
 void setup() {
   Serial.begin(115200);
-  delay(100);
+  delay(200);
+  Serial.println();
+  Serial.println("Weather Station " + version);
+  Serial.println();
 
-  Serial.print("BME280 init ");
-  Wire.setPins(2, 1);
-  if(!bme.begin(0x76)) {
-    Serial.println("failed. Please check your wiring and I2C address");
-    while(1);
-  }
+  Wire.setPins(2, 1); // SDA, SCL
 
-  Serial.print("succeeded. Sensor id: ");
-  Serial.print(bme.sensorID());
-  Serial.println(". Done.");
-
+  initSensor(outdoor);
 }
 
 void loop() {
+  dumpReadings(getReadings(outdoor));
   delay(10000);
-  dumpReadings(getReadings());
 }
 
-readings getReadings() {
-    Serial.println("-- Reading BME280 --");
-    readings r = {bme.readTemperature(), bme.readHumidity(), bme.readPressure() / 100.0F};
+void initSensor(sensor &s) {
+  Serial.print("Initializing " + s.name);
+
+  if(!s.sensor.begin(s.address)) {
+    Serial.println(" failed. Please check wiring and I2C address.");
+    while(1);
+  }
+
+  Serial.println(" done.");
+  Serial.println();
+}
+
+readings getReadings(sensor &s) {
+    Serial.println("-- Reading " + s.name + " --");
+    readings r = {s.sensor.readTemperature(), s.sensor.readHumidity(), s.sensor.readPressure() / 100.0F};
     return r;
 }
 
