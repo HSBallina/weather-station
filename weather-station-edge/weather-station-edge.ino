@@ -1,17 +1,10 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
-#include <TFT_eSPI.h>
-
-TFT_eSPI tft = TFT_eSPI();
-TFT_eSprite spr = TFT_eSprite(&tft);
-
-#define TFT_WIDTH 480
-#define TFT_HEIGHT 320
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
-String version = "20240508b";
+String version = "20240515a";
 
 struct readings {
   float temperature, humidity, pressure;
@@ -28,7 +21,7 @@ sensor indoor = {bmeIn, "indoor", 0x76};
 
 void setup() {
   Serial.begin(115200);
-  delay(200);
+  delay(1000); // Give time to open serial monitor
   Serial.println();
   Serial.println("Weather Station " + version);
   Serial.println();
