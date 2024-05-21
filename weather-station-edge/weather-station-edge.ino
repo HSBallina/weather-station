@@ -4,7 +4,7 @@
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
-String version = "20240515a";
+String version = "20240521a";
 
 struct readings {
   float temperature, humidity, pressure;
@@ -21,7 +21,11 @@ sensor indoor = {bmeIn, "indoor", 0x76};
 
 void setup() {
   Serial.begin(115200);
-  delay(1000); // Give time to open serial monitor
+
+  while(!Serial) {
+    delay(100);
+  }
+  
   Serial.println();
   Serial.println("Weather Station " + version);
   Serial.println();
