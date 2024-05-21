@@ -1,10 +1,12 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include "libs/network.h"
+#include "secrets.h"
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
-String version = "20240521a";
+String version = "20240521b";
 
 struct readings {
   float temperature, humidity, pressure;
@@ -25,10 +27,15 @@ void setup() {
   while(!Serial) {
     delay(100);
   }
-  
+
   Serial.println();
   Serial.println("Weather Station " + version);
   Serial.println();
+
+  if(!connectWifi(WIFI_SSID, WIFI_PASSWORD)) {
+    Serial.println("Failed to connect to WiFi.");
+    while(1);
+  }
 
   Wire.setPins(2, 1); // SDA, SCL
 
@@ -37,10 +44,10 @@ void setup() {
 }
 
 void loop() {
+  delay(10000);
   dumpReadings(getReadings(outdoor));
-  delay(4000);
+  delay(10000);
   dumpReadings(getReadings(indoor));
-  delay(4000);
 }
 
 void initSensor(sensor &s) {
@@ -52,7 +59,6 @@ void initSensor(sensor &s) {
   }
 
   Serial.println(" done.");
-  Serial.println();
 }
 
 readings getReadings(sensor &s) {
