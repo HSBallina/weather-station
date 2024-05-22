@@ -146,7 +146,6 @@ static void initTime(String timezone)
       while (1)
         ;
     }
-    delay(5000);
   }
 
   Serial.println("");
