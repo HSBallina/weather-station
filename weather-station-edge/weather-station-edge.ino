@@ -21,7 +21,7 @@
 #include <azure_ca.h>
 
 #include "AzureIoT.h"
-#include "Azure_IoT_PnP_Template.h"
+#include "AzureIoTMessages.h"
 #include "secrets.h"
 
 #define VERSION "20240522g"
@@ -351,7 +351,7 @@ void setup()
   connectWifi();
   initTime(PSX_TZ);
 
-  azure_pnp_init();
+  azurePnpInit();
   azure_pnp_set_telemetry_frequency(TELEMETRY_FREQUENCY_IN_SECONDS);
 
   configureAzureIot();
@@ -453,7 +453,7 @@ static void configureAzureIot()
    * components do not overwrite any information within this structure.
    */
   azure_iot_config.user_agent = AZ_SPAN_FROM_STR(AZURE_SDK_CLIENT_USER_AGENT);
-  azure_iot_config.model_id = azure_pnp_get_model_id();
+  azure_iot_config.model_id = azurePnpGetModelId();
   azure_iot_config.use_device_provisioning = true; // Required for Azure IoT Central.
   azure_iot_config.iot_hub_fqdn = AZ_SPAN_EMPTY;
   azure_iot_config.device_id = AZ_SPAN_EMPTY;
