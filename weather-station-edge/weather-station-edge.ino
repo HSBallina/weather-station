@@ -38,6 +38,8 @@ static azure_iot_t azure_iot;
 static esp_mqtt_client_handle_t mqtt_client;
 
 static uint32_t properties_request_id = 0;
+static bool send_device_info = true;
+static bool azure_initial_connect = false; //Turns true when ESP32 successfully connects to Azure IoT Central for the first time
 
 #define AZ_IOT_DATA_BUFFER_SIZE 1500
 static uint8_t az_iot_data_buffer[AZ_IOT_DATA_BUFFER_SIZE];
@@ -349,10 +351,52 @@ void setup()
 
 void loop()
 {
-  delay(10000);
-  dumpReadings(outdoor);
-  delay(10000);
-  dumpReadings(indoor);
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    azure_iot_stop(&azure_iot);
+    
+    connectWifi();
+    
+    if (!azure_initial_connect)
+    {
+      configure_azure_iot();
+    }
+    
+    azure_iot_start(&azure_iot);
+  }
+  else
+  {
+    switch (azure_iot_get_status(&azure_iot))
+    {
+      case azure_iot_connected:
+        azure_initial_connect = true;
+
+        if (send_device_info)
+        {
+          (void)azure_pnp_send_device_info(&azure_iot, properties_request_id++);
+          send_device_info = false; // Only need to send once.
+        }
+        else if (azure_pnp_send_telemetry(&azure_iot) != 0)
+        {
+          LogError("Failed sending telemetry.");
+        }
+        break;
+        
+      case azure_iot_error:
+        LogError("Azure IoT client is in error state.");
+        azure_iot_stop(&azure_iot);
+        break;
+        
+      case azure_iot_disconnected:
+        WiFi.disconnect();
+        break;
+        
+      default:
+        break;
+    }
+
+    azure_iot_do_work(&azure_iot);
+  }
 }
 
 void initSensor(sensor &s)
