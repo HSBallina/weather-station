@@ -3,7 +3,7 @@
   This sketch reads temperature, humidity and pressure from BME280 sensors and sends the data to Azure IoT Central.
 
   Part of the code is based on the Azure IoT SDK for C, available at https://github.com/Azure/azure-sdk-for-c-arduino
-*/ 
+*/
 #include <time.h>
 #include <Wire.h>
 #include <WiFi.h>
@@ -22,9 +22,10 @@
 
 #include "AzureIoT.h"
 #include "AzureIoTMessages.h"
+#include "WeatherData.h"
 #include "secrets.h"
 
-#define VERSION "20240522g"
+#define VERSION "20240523a"
 
 #define SERIAL_LOGGER_BAUD_RATE 115200
 #define MQTT_DO_NOT_RETAIN_MSG 0
@@ -51,15 +52,12 @@
 
 #define MQTT_PROTOCOL_PREFIX "mqtts://"
 
-Adafruit_BME280 bmeOut;
-Adafruit_BME280 bmeIn;
-
 static azure_iot_config_t azure_iot_config;
 static azure_iot_t azure_iot;
 static esp_mqtt_client_handle_t mqtt_client;
 static uint32_t properties_request_id = 0;
-static bool send_device_info = true; // Send device info once on first connect
-static bool azure_initial_connect = false; //Turns true when ESP32 successfully connects to Azure IoT Central for the first time
+static bool send_device_info = true;       // Send device info once on first connect
+static bool azure_initial_connect = false; // Turns true when ESP32 successfully connects to Azure IoT Central for the first time
 
 #define AZ_IOT_DATA_BUFFER_SIZE 1500
 static uint8_t az_iot_data_buffer[AZ_IOT_DATA_BUFFER_SIZE];
@@ -71,21 +69,6 @@ static void connectWifi();
 static void configureAzureIot();
 static esp_err_t esp_mqtt_event_handler(esp_mqtt_event_handle_t event);
 static char mqtt_broker_uri[128];
-
-struct readings
-{
-  float temperature, humidity, pressure;
-};
-
-struct sensor
-{
-  Adafruit_BME280 sensor;
-  String name;
-  uint8_t address;
-};
-
-sensor outdoor = {bmeOut, "outdoor", 0x77};
-sensor indoor = {bmeIn, "indoor", 0x76};
 
 #pragma region MQTT interface functions
 /* --- MQTT Interface Functions --- */
@@ -99,8 +82,8 @@ sensor indoor = {bmeIn, "indoor", 0x76};
  * See the documentation of `mqtt_client_init_function_t` in AzureIoT.h for details.
  */
 static int mqtt_client_init_function(
-    mqtt_client_config_t* mqtt_client_config,
-    mqtt_client_handle_t* mqtt_client_handle)
+    mqtt_client_config_t *mqtt_client_config,
+    mqtt_client_handle_t *mqtt_client_handle)
 {
   int result;
   esp_mqtt_client_config_t mqtt_config;
@@ -113,15 +96,15 @@ static int mqtt_client_init_function(
 
   mqtt_config.uri = mqtt_broker_uri;
   mqtt_config.port = mqtt_client_config->port;
-  mqtt_config.client_id = (const char*)az_span_ptr(mqtt_client_config->client_id);
-  mqtt_config.username = (const char*)az_span_ptr(mqtt_client_config->username);
+  mqtt_config.client_id = (const char *)az_span_ptr(mqtt_client_config->client_id);
+  mqtt_config.username = (const char *)az_span_ptr(mqtt_client_config->username);
 
 #ifdef IOT_CONFIG_USE_X509_CERT
   LogInfo("MQTT client using X509 Certificate authentication");
   mqtt_config.client_cert_pem = IOT_CONFIG_DEVICE_CERT;
   mqtt_config.client_key_pem = IOT_CONFIG_DEVICE_CERT_PRIVATE_KEY;
 #else // Using SAS key
-  mqtt_config.password = (const char*)az_span_ptr(mqtt_client_config->password);
+  mqtt_config.password = (const char *)az_span_ptr(mqtt_client_config->password);
 #endif
 
   mqtt_config.keepalive = 30;
@@ -129,7 +112,7 @@ static int mqtt_client_init_function(
   mqtt_config.disable_auto_reconnect = false;
   mqtt_config.event_handle = esp_mqtt_event_handler;
   mqtt_config.user_context = NULL;
-  mqtt_config.cert_pem = (const char*)ca_pem;
+  mqtt_config.cert_pem = (const char *)ca_pem;
 
   LogInfo("MQTT client target uri set to '%s'", mqtt_broker_uri);
 
@@ -201,7 +184,7 @@ static int mqtt_client_subscribe_function(
   // esp_mqtt_client_subscribe returns the packet id or negative on error already, so no conversion
   // is needed.
   int packet_id = esp_mqtt_client_subscribe(
-      (esp_mqtt_client_handle_t)mqtt_client_handle, (const char*)az_span_ptr(topic), (int)qos);
+      (esp_mqtt_client_handle_t)mqtt_client_handle, (const char *)az_span_ptr(topic), (int)qos);
 
   return packet_id;
 }
@@ -211,14 +194,14 @@ static int mqtt_client_subscribe_function(
  */
 static int mqtt_client_publish_function(
     mqtt_client_handle_t mqtt_client_handle,
-    mqtt_message_t* mqtt_message)
+    mqtt_message_t *mqtt_message)
 {
   LogInfo("MQTT client publishing to '%s'", az_span_ptr(mqtt_message->topic));
 
   int mqtt_result = esp_mqtt_client_publish(
       (esp_mqtt_client_handle_t)mqtt_client_handle,
-      (const char*)az_span_ptr(mqtt_message->topic), // topic is always null-terminated.
-      (const char*)az_span_ptr(mqtt_message->payload),
+      (const char *)az_span_ptr(mqtt_message->topic), // topic is always null-terminated.
+      (const char *)az_span_ptr(mqtt_message->payload),
       az_span_size(mqtt_message->payload),
       (int)mqtt_message->qos,
       MQTT_DO_NOT_RETAIN_MSG);
@@ -239,11 +222,11 @@ static int mqtt_client_publish_function(
  * See the documentation of `hmac_sha256_encryption_function_t` in AzureIoT.h for details.
  */
 static int mbedtls_hmac_sha256(
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_length,
-    const uint8_t* payload,
+    const uint8_t *payload,
     size_t payload_length,
-    uint8_t* signed_payload,
+    uint8_t *signed_payload,
     size_t signed_payload_size)
 {
   (void)signed_payload_size;
@@ -252,9 +235,9 @@ static int mbedtls_hmac_sha256(
 
   mbedtls_md_init(&ctx);
   mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
-  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)key, key_length);
-  mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload, payload_length);
-  mbedtls_md_hmac_finish(&ctx, (byte*)signed_payload);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char *)key, key_length);
+  mbedtls_md_hmac_update(&ctx, (const unsigned char *)payload, payload_length);
+  mbedtls_md_hmac_finish(&ctx, (byte *)signed_payload);
   mbedtls_md_free(&ctx);
 
   return 0;
@@ -264,11 +247,11 @@ static int mbedtls_hmac_sha256(
  * See the documentation of `base64_decode_function_t` in AzureIoT.h for details.
  */
 static int base64_decode(
-    uint8_t* data,
+    uint8_t *data,
     size_t data_length,
-    uint8_t* decoded,
+    uint8_t *decoded,
     size_t decoded_size,
-    size_t* decoded_length)
+    size_t *decoded_length)
 {
   return mbedtls_base64_decode(decoded, decoded_size, decoded_length, data, data_length);
 }
@@ -277,11 +260,11 @@ static int base64_decode(
  * See the documentation of `base64_encode_function_t` in AzureIoT.h for details.
  */
 static int base64_encode(
-    uint8_t* data,
+    uint8_t *data,
     size_t data_length,
-    uint8_t* encoded,
+    uint8_t *encoded,
     size_t encoded_size,
-    size_t* encoded_length)
+    size_t *encoded_length)
 {
   return mbedtls_base64_encode(encoded, encoded_size, encoded_length, data, data_length);
 }
@@ -314,8 +297,7 @@ void on_properties_received(az_span properties)
  */
 static void on_command_request_received(command_request_t command)
 {
-  az_span component_name
-      = az_span_size(command.component_name) == 0 ? AZ_SPAN_FROM_STR("") : command.component_name;
+  az_span component_name = az_span_size(command.component_name) == 0 ? AZ_SPAN_FROM_STR("") : command.component_name;
 
   LogInfo(
       "Command request received (id=%.*s, component=%.*s, name=%.*s)",
@@ -352,7 +334,7 @@ void setup()
   initTime(PSX_TZ);
 
   azurePnpInit();
-  azure_pnp_set_telemetry_frequency(TELEMETRY_FREQUENCY_IN_SECONDS);
+  azurePnpSetTelemetryFrequency(TELEMETRY_FREQUENCY_IN_SECONDS);
 
   configureAzureIot();
   azure_iot_start(&azure_iot);
@@ -361,6 +343,8 @@ void setup()
 
   Wire.setPins(2, 1); // SDA, SCL
 
+  extern sensor outdoor;
+  extern sensor indoor;
   initSensor(outdoor);
   initSensor(indoor);
 
@@ -373,45 +357,48 @@ void loop()
   if (WiFi.status() != WL_CONNECTED)
   {
     azure_iot_stop(&azure_iot);
-    
+
     connectWifi();
-    
+
     if (!azure_initial_connect)
     {
       configureAzureIot();
     }
-    
+
     azure_iot_start(&azure_iot);
   }
   else
   {
     switch (azure_iot_get_status(&azure_iot))
     {
-      case azure_iot_connected:
-        azure_initial_connect = true;
+    case azure_iot_connected:
+      azure_initial_connect = true;
 
-        if (send_device_info)
-        {
-          (void)azurePnpSendDeviceInfo(&azure_iot, properties_request_id++);
-          send_device_info = false; // Only need to send once.
-        }
-        else if (azure_pnp_send_telemetry(&azure_iot) != 0)
+      if (send_device_info)
+      {
+        (void)azurePnpSendDeviceInfo(&azure_iot, properties_request_id++);
+        send_device_info = false; // Only need to send once.
+      }
+      else
+      {
+        if (azurePnpSendTelemetry(&azure_iot) != 0)
         {
           LogError("Failed sending telemetry.");
         }
-        break;
-        
-      case azure_iot_error:
-        LogError("Azure IoT client is in error state.");
-        azure_iot_stop(&azure_iot);
-        break;
-        
-      case azure_iot_disconnected:
-        WiFi.disconnect();
-        break;
-        
-      default:
-        break;
+      }
+      break;
+
+    case azure_iot_error:
+      LogError("Azure IoT client is in error state.");
+      azure_iot_stop(&azure_iot);
+      break;
+
+    case azure_iot_disconnected:
+      WiFi.disconnect();
+      break;
+
+    default:
+      break;
     }
 
     azure_iot_do_work(&azure_iot);
@@ -430,11 +417,6 @@ void initSensor(sensor &s)
   }
 
   LogInfo("Initializing sensor %s done", s.name);
-}
-
-readings getReadings(sensor &s)
-{
-  return {s.sensor.readTemperature(), s.sensor.readHumidity(), s.sensor.readPressure() / 100.0F};
 }
 
 void dumpReadings(sensor &s)
@@ -492,107 +474,106 @@ static esp_err_t esp_mqtt_event_handler(esp_mqtt_event_handle_t event)
   {
     int i, r;
 
-    case MQTT_EVENT_ERROR:
-      LogError("MQTT client in ERROR state.");
-      LogError(
-          "esp_tls_stack_err=%d; "
-          "esp_tls_cert_verify_flags=%d;esp_transport_sock_errno=%d;error_type=%d;connect_return_"
-          "code=%d",
-          event->error_handle->esp_tls_stack_err,
-          event->error_handle->esp_tls_cert_verify_flags,
-          event->error_handle->esp_transport_sock_errno,
-          event->error_handle->error_type,
-          event->error_handle->connect_return_code);
+  case MQTT_EVENT_ERROR:
+    LogError("MQTT client in ERROR state.");
+    LogError(
+        "esp_tls_stack_err=%d; "
+        "esp_tls_cert_verify_flags=%d;esp_transport_sock_errno=%d;error_type=%d;connect_return_"
+        "code=%d",
+        event->error_handle->esp_tls_stack_err,
+        event->error_handle->esp_tls_cert_verify_flags,
+        event->error_handle->esp_transport_sock_errno,
+        event->error_handle->error_type,
+        event->error_handle->connect_return_code);
 
-      switch (event->error_handle->connect_return_code)
-      {
-        case MQTT_CONNECTION_ACCEPTED:
-          LogError("connect_return_code=MQTT_CONNECTION_ACCEPTED");
-          break;
-        case MQTT_CONNECTION_REFUSE_PROTOCOL:
-          LogError("connect_return_code=MQTT_CONNECTION_REFUSE_PROTOCOL");
-          break;
-        case MQTT_CONNECTION_REFUSE_ID_REJECTED:
-          LogError("connect_return_code=MQTT_CONNECTION_REFUSE_ID_REJECTED");
-          break;
-        case MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE:
-          LogError("connect_return_code=MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE");
-          break;
-        case MQTT_CONNECTION_REFUSE_BAD_USERNAME:
-          LogError("connect_return_code=MQTT_CONNECTION_REFUSE_BAD_USERNAME");
-          break;
-        case MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED:
-          LogError("connect_return_code=MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED");
-          break;
-        default:
-          LogError("connect_return_code=unknown (%d)", event->error_handle->connect_return_code);
-          break;
-      };
-
+    switch (event->error_handle->connect_return_code)
+    {
+    case MQTT_CONNECTION_ACCEPTED:
+      LogError("connect_return_code=MQTT_CONNECTION_ACCEPTED");
       break;
-    case MQTT_EVENT_CONNECTED:
-      LogInfo("MQTT client connected (session_present=%d).", event->session_present);
-
-      if (azure_iot_mqtt_client_connected(&azure_iot) != 0)
-      {
-        LogError("azure_iot_mqtt_client_connected failed.");
-      }
-
+    case MQTT_CONNECTION_REFUSE_PROTOCOL:
+      LogError("connect_return_code=MQTT_CONNECTION_REFUSE_PROTOCOL");
       break;
-    case MQTT_EVENT_DISCONNECTED:
-      LogInfo("MQTT client disconnected.");
-
-      if (azure_iot_mqtt_client_disconnected(&azure_iot) != 0)
-      {
-        LogError("azure_iot_mqtt_client_disconnected failed.");
-      }
-
+    case MQTT_CONNECTION_REFUSE_ID_REJECTED:
+      LogError("connect_return_code=MQTT_CONNECTION_REFUSE_ID_REJECTED");
       break;
-    case MQTT_EVENT_SUBSCRIBED:
-      LogInfo("MQTT topic subscribed (message id=%d).", event->msg_id);
-
-      if (azure_iot_mqtt_client_subscribe_completed(&azure_iot, event->msg_id) != 0)
-      {
-        LogError("azure_iot_mqtt_client_subscribe_completed failed.");
-      }
-
+    case MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE:
+      LogError("connect_return_code=MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE");
       break;
-    case MQTT_EVENT_UNSUBSCRIBED:
-      LogInfo("MQTT topic unsubscribed.");
+    case MQTT_CONNECTION_REFUSE_BAD_USERNAME:
+      LogError("connect_return_code=MQTT_CONNECTION_REFUSE_BAD_USERNAME");
       break;
-    case MQTT_EVENT_PUBLISHED:
-      LogInfo("MQTT event MQTT_EVENT_PUBLISHED");
-
-      if (azure_iot_mqtt_client_publish_completed(&azure_iot, event->msg_id) != 0)
-      {
-        LogError("azure_iot_mqtt_client_publish_completed failed (message id=%d).", event->msg_id);
-      }
-
-      break;
-    case MQTT_EVENT_DATA:
-      LogInfo("MQTT message received.");
-
-      mqtt_message_t mqtt_message;
-      mqtt_message.topic = az_span_create((uint8_t*)event->topic, event->topic_len);
-      mqtt_message.payload = az_span_create((uint8_t*)event->data, event->data_len);
-      mqtt_message.qos
-          = mqtt_qos_at_most_once; // QoS is unused by azure_iot_mqtt_client_message_received.
-
-      if (azure_iot_mqtt_client_message_received(&azure_iot, &mqtt_message) != 0)
-      {
-        LogError(
-            "azure_iot_mqtt_client_message_received failed (topic=%.*s).",
-            event->topic_len,
-            event->topic);
-      }
-
-      break;
-    case MQTT_EVENT_BEFORE_CONNECT:
-      LogInfo("MQTT client connecting.");
+    case MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED:
+      LogError("connect_return_code=MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED");
       break;
     default:
-      LogError("MQTT event UNKNOWN.");
+      LogError("connect_return_code=unknown (%d)", event->error_handle->connect_return_code);
       break;
+    };
+
+    break;
+  case MQTT_EVENT_CONNECTED:
+    LogInfo("MQTT client connected (session_present=%d).", event->session_present);
+
+    if (azure_iot_mqtt_client_connected(&azure_iot) != 0)
+    {
+      LogError("azure_iot_mqtt_client_connected failed.");
+    }
+
+    break;
+  case MQTT_EVENT_DISCONNECTED:
+    LogInfo("MQTT client disconnected.");
+
+    if (azure_iot_mqtt_client_disconnected(&azure_iot) != 0)
+    {
+      LogError("azure_iot_mqtt_client_disconnected failed.");
+    }
+
+    break;
+  case MQTT_EVENT_SUBSCRIBED:
+    LogInfo("MQTT topic subscribed (message id=%d).", event->msg_id);
+
+    if (azure_iot_mqtt_client_subscribe_completed(&azure_iot, event->msg_id) != 0)
+    {
+      LogError("azure_iot_mqtt_client_subscribe_completed failed.");
+    }
+
+    break;
+  case MQTT_EVENT_UNSUBSCRIBED:
+    LogInfo("MQTT topic unsubscribed.");
+    break;
+  case MQTT_EVENT_PUBLISHED:
+    LogInfo("MQTT event MQTT_EVENT_PUBLISHED");
+
+    if (azure_iot_mqtt_client_publish_completed(&azure_iot, event->msg_id) != 0)
+    {
+      LogError("azure_iot_mqtt_client_publish_completed failed (message id=%d).", event->msg_id);
+    }
+
+    break;
+  case MQTT_EVENT_DATA:
+    LogInfo("MQTT message received.");
+
+    mqtt_message_t mqtt_message;
+    mqtt_message.topic = az_span_create((uint8_t *)event->topic, event->topic_len);
+    mqtt_message.payload = az_span_create((uint8_t *)event->data, event->data_len);
+    mqtt_message.qos = mqtt_qos_at_most_once; // QoS is unused by azure_iot_mqtt_client_message_received.
+
+    if (azure_iot_mqtt_client_message_received(&azure_iot, &mqtt_message) != 0)
+    {
+      LogError(
+          "azure_iot_mqtt_client_message_received failed (topic=%.*s).",
+          event->topic_len,
+          event->topic);
+    }
+
+    break;
+  case MQTT_EVENT_BEFORE_CONNECT:
+    LogInfo("MQTT client connecting.");
+    break;
+  default:
+    LogError("MQTT event UNKNOWN.");
+    break;
   }
 
   return ESP_OK;

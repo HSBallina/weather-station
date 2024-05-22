@@ -44,7 +44,7 @@ int azurePnpSendDeviceInfo(azure_iot_t* azure_iot, uint32_t request_id);
 /*
  * @brief     Sets with which minimum frequency this module should send telemetry to Azure IoT
  * Central.
- * @remark    `azure_pnp_send_telemetry` is used to send telemetry, but it will not send anything
+ * @remark    `azurePnpSendTelemetry` is used to send telemetry, but it will not send anything
  *            unless enough time has passed since the last telemetry has been published.
  *            This delay is defined internally by `telemetry_frequency_in_seconds`,
  *            set initially to once every 10 seconds.
@@ -52,7 +52,7 @@ int azurePnpSendDeviceInfo(azure_iot_t* azure_iot, uint32_t request_id);
  * @param[in]    frequency_in_seconds    Period of time, in seconds, to wait between two consecutive
  *                                       telemetry payloads are sent to Azure IoT Central.
  */
-void azure_pnp_set_telemetry_frequency(size_t frequency_in_seconds);
+void azurePnpSetTelemetryFrequency(size_t frequency_in_seconds);
 
 /*
  * @brief     Sends telemetry implemented by this IoT Plug and Play application to Azure IoT
@@ -62,16 +62,16 @@ void azure_pnp_set_telemetry_frequency(size_t frequency_in_seconds);
  *            The template defines telemetry data points for temperature, humidity,
  *            pressure, altitude, luminosity, magnetic field, rolling and pitch angles,
  *            as well as acceleration. All of these data are read from the board sensors and sent to
- *            Azure IoT Central when `azure_pnp_send_telemetry` is called.
+ *            Azure IoT Central when `azurePnpSendTelemetry` is called.
  *            This function must be called frequently enough, no slower than the frequency set
- *            with `azure_pnp_set_telemetry_frequency` (or the default frequency of 10 seconds).
+ *            with `azurePnpSetTelemetryFrequency` (or the default frequency of 10 seconds).
  *
  * @param[in]    azure_iot    A pointer to a azure_iot_t instance, previously initialized
  *                            with `azure_iot_init`.
  *
  * return        int          0 on success, non-zero if any failure occurs.
  */
-int azure_pnp_send_telemetry(azure_iot_t* azure_iot);
+int azurePnpSendTelemetry(azure_iot_t* azure_iot);
 
 /*
  * @brief     Handles a command when it is received from Azure IoT Central.
