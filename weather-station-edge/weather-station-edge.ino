@@ -1,5 +1,4 @@
 #include <time.h>
-#include <Timezone.h>
 #include <Wire.h>
 #include <WiFi.h>
 #include <Adafruit_Sensor.h>
