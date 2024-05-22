@@ -23,7 +23,7 @@
 
 #define NTP_SERVERS "pool.ntp.org", "time.nist.gov"
 #define CET_TZ "CET-1CEST,M3.5.0,M10.5.0/3"
-#define VERSION "20240522e"
+#define VERSION "20240522f"
 
 #define MQTT_DO_NOT_RETAIN_MSG 0
 #define RESULT_OK 0
@@ -333,6 +333,11 @@ void setup()
   azure_pnp_init();
   azure_pnp_set_telemetry_frequency(TELEMETRY_FREQUENCY_IN_SECONDS);
 
+  configure_azure_iot();
+  azure_iot_start(&azure_iot);
+
+  LogInfo("Azure IoT client initialized (state=%d)", azure_iot.state);
+
   Wire.setPins(2, 1); // SDA, SCL
 
   initSensor(outdoor);
@@ -397,11 +402,11 @@ static void configure_azure_iot()
 #else
   azure_iot_config.device_certificate = AZ_SPAN_EMPTY;
   azure_iot_config.device_certificate_private_key = AZ_SPAN_EMPTY;
-  azure_iot_config.device_key = AZ_SPAN_FROM_STR(IOT_CONFIG_DEVICE_KEY);
+  azure_iot_config.device_key = AZ_SPAN_FROM_STR(DEVICE_KEY);
 #endif // IOT_CONFIG_USE_X509_CERT
 
-  azure_iot_config.dps_id_scope = AZ_SPAN_FROM_STR(DPS_ID_SCOPE);
-  azure_iot_config.dps_registration_id = AZ_SPAN_FROM_STR(IOT_CONFIG_DEVICE_ID); // Use Device ID for Azure IoT Central.
+  azure_iot_config.dps_id_scope = AZ_SPAN_FROM_STR(SCOPE_ID);
+  azure_iot_config.dps_registration_id = AZ_SPAN_FROM_STR(DEVICE_ID); // Use Device ID for Azure IoT Central.
   azure_iot_config.data_buffer = AZ_SPAN_FROM_BUFFER(az_iot_data_buffer);
   azure_iot_config.sas_token_lifetime_in_minutes = MQTT_PASSWORD_LIFETIME_IN_MINUTES;
   azure_iot_config.mqtt_client_interface.mqtt_client_init = mqtt_client_init_function;
