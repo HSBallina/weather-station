@@ -12,12 +12,10 @@
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
-const char* VERSION = "20240521c";
+const char* VERSION = "20240522a";
 
-// This is a logging function used by Azure IoT client.
 static void logging_function(log_level_t log_level, char const* const format, ...);
-static void connect_to_wifi();
-
+static void connectWifi();
 
 struct readings {
   float temperature, humidity, pressure;
@@ -42,16 +40,19 @@ void setup() {
 
   set_logging_function(logging_function);
 
-  Serial.println();
-  Serial.println("Weather Station " + String(VERSION));
-  Serial.println();
+  Serial.println("");
+  LogInfo("Weather Station %s", VERSION);
+  Serial.println("");
 
-  connect_to_wifi();
+  connectWifi();
 
   Wire.setPins(2, 1); // SDA, SCL
 
   initSensor(outdoor);
   initSensor(indoor);
+
+  LogInfo("Setup done");
+  Serial.println("");
 }
 
 void loop() {
@@ -62,14 +63,14 @@ void loop() {
 }
 
 void initSensor(sensor &s) {
-  Serial.print("Initializing " + s.name);
+  LogInfo("Initializing sensor %s", s.name);
 
   if(!s.sensor.begin(s.address)) {
-    Serial.println(" failed. Please check wiring and I2C address.");
+    LogError("Failed to initialize sensor %s", s.name);
     while(1);
   }
 
-  Serial.println(" done.");
+  LogInfo("Initializing sensor %s done", s.name);
 }
 
 readings getReadings(sensor &s) {
@@ -94,18 +95,25 @@ void dumpReadings(readings r) {
   Serial.println();
 }
 
-static void connect_to_wifi()
+static void connectWifi()
 {
-  LogInfo("Connecting to %s", WIFI_SSID);
+  LogInfo("Connecting to WiFi %s", WIFI_SSID);
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   delay(100);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
+
+  int i = 0;
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(100);
     Serial.print(".");
+    i++;
+    if(i > 10) {
+      Serial.println("");
+      LogError("Failed to connect to WiFi %s", WIFI_SSID);
+      while(1);
+    }
   }
 
   Serial.println("");
