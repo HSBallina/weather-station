@@ -5,6 +5,8 @@
 #include <Adafruit_BME280.h>
 
 #include "AzureIoT.h"
+#include "Azure_IoT_PnP_Template.h"
+#include "iot_configs.h"
 #include "secrets.h"
 
 #define SERIAL_LOGGER_BAUD_RATE 115200
