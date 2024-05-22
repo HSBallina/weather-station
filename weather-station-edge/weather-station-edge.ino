@@ -1,3 +1,5 @@
+#include <time.h>
+#include <Timezone.h>
 #include <Wire.h>
 #include <WiFi.h>
 #include <Adafruit_Sensor.h>
@@ -7,13 +9,16 @@
 #include "secrets.h"
 
 #define SERIAL_LOGGER_BAUD_RATE 115200
-#define UNIX_TIME_NOV_13_2017 1510592825
-#define UNIX_EPOCH_START_YEAR 1900
+
+#define NTP_SERVERS "pool.ntp.org", "time.nist.gov"
+
+#define CET_TZ "CET-1CEST,M3.5.0,M10.5.0/3"
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
-const char* VERSION = "20240522a";
+const char* VERSION = "20240522b";
 
+static void initTime(String timezone);
 static void logging_function(log_level_t log_level, char const* const format, ...);
 static void connectWifi();
 
@@ -45,6 +50,7 @@ void setup() {
   Serial.println("");
 
   connectWifi();
+  initTime(CET_TZ);
 
   Wire.setPins(2, 1); // SDA, SCL
 
@@ -57,9 +63,9 @@ void setup() {
 
 void loop() {
   delay(10000);
-  dumpReadings(getReadings(outdoor));
+  dumpReadings(outdoor);
   delay(10000);
-  dumpReadings(getReadings(indoor));
+  dumpReadings(indoor);
 }
 
 void initSensor(sensor &s) {
@@ -74,25 +80,14 @@ void initSensor(sensor &s) {
 }
 
 readings getReadings(sensor &s) {
-    Serial.println("-- Reading " + s.name + " --");
-    readings r = {s.sensor.readTemperature(), s.sensor.readHumidity(), s.sensor.readPressure() / 100.0F};
-    return r;
+    return {s.sensor.readTemperature(), s.sensor.readHumidity(), s.sensor.readPressure() / 100.0F};
 }
 
-void dumpReadings(readings r) {
-  Serial.print("Temperature = ");
-  Serial.print(r.temperature);
-  Serial.println(" *C");
+void dumpReadings(sensor &s) {
+  readings r = getReadings(s);
 
-  Serial.print("Pressure = ");
-  Serial.print(r.pressure);
-  Serial.println(" hPa");
-
-  Serial.print("Humidity = ");
-  Serial.print(r.humidity);
-  Serial.println(" %");
-
-  Serial.println();
+  String payload = "{\"sensor\": \"" + s.name + "\", \"temperature\": " + String(r.temperature) + ", \"humidity\": " + String(r.humidity) + ", \"pressure\": " + String(r.pressure) + "}";
+  LogInfo("Sending payload: %s", payload.c_str());
 }
 
 static void connectWifi()
@@ -121,42 +116,37 @@ static void connectWifi()
   LogInfo("WiFi connected, IP address: %s", WiFi.localIP().toString().c_str());
 }
 
+void setTimezone(String timezone) {
+  LogInfo("Setting timezone to %s", timezone.c_str());
+  setenv("TZ", timezone.c_str(), 1);
+  tzset();
+}
+
+static void initTime(String timezone) {
+  struct tm timeinfo;
+
+  LogInfo("Setting time using SNTP");
+
+  configTime(0, 0, NTP_SERVERS);
+  if(!getLocalTime(&timeinfo, 1000UL)) {
+    LogError("Failed to obtain time");
+    while(1);
+  }
+
+  setTimezone(timezone);
+}
+
 static void logging_function(log_level_t log_level, char const* const format, ...)
 {
-  struct tm* ptm;
-  time_t now = time(NULL);
+  struct tm ptm;
 
-  ptm = gmtime(&now);
-
-  Serial.print(ptm->tm_year + UNIX_EPOCH_START_YEAR);
-  Serial.print("/");
-  Serial.print(ptm->tm_mon + 1);
-  Serial.print("/");
-  Serial.print(ptm->tm_mday);
-  Serial.print(" ");
-
-  if (ptm->tm_hour < 10)
-  {
-    Serial.print(0);
+  if(!getLocalTime(&ptm, 500UL)) {
+    time_t now = time(NULL);
+    struct tm* ptmp = gmtime(&now);
+    ptm = *ptmp;
   }
 
-  Serial.print(ptm->tm_hour);
-  Serial.print(":");
-
-  if (ptm->tm_min < 10)
-  {
-    Serial.print(0);
-  }
-
-  Serial.print(ptm->tm_min);
-  Serial.print(":");
-
-  if (ptm->tm_sec < 10)
-  {
-    Serial.print(0);
-  }
-
-  Serial.print(ptm->tm_sec);
+  Serial.print(&ptm, "%Y-%m-%d %H:%M:%S %z");
 
   Serial.print(log_level == log_level_info ? " [INFO] " : " [ERROR] ");
 
