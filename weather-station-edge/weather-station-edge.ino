@@ -16,7 +16,6 @@
 
 #include "AzureIoT.h"
 #include "Azure_IoT_PnP_Template.h"
-#include "iot_configs.h"
 #include "secrets.h"
 
 #define SERIAL_LOGGER_BAUD_RATE 115200
@@ -29,6 +28,18 @@
 #define RESULT_OK 0
 #define RESULT_ERROR __LINE__
 
+
+// User-agent (url-encoded) provided by the MQTT client to Azure IoT Services.
+// When developing for your own Arduino-based platform,
+// please update the suffix with the format '(ard;<platform>)' as an url-encoded string.
+#define AZURE_SDK_CLIENT_USER_AGENT "c%2F" AZ_SDK_VERSION_STRING "(ard%3Besp32)"
+
+// Publish 1 message every 10 seconds.
+#define TELEMETRY_FREQUENCY_IN_SECONDS 10
+
+// For how long the MQTT password (SAS token) is valid, in minutes.
+// After that, the sample automatically generates a new password and re-connects.
+#define MQTT_PASSWORD_LIFETIME_IN_MINUTES 60
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
