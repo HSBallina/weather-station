@@ -13,7 +13,7 @@
 
 #define NTP_SERVERS "pool.ntp.org", "time.nist.gov"
 #define CET_TZ "CET-1CEST,M3.5.0,M10.5.0/3"
-#define VERSION "20240522d"
+#define VERSION "20240522e"
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
@@ -54,6 +54,9 @@ void setup()
 
   connectWifi();
   initTime(CET_TZ);
+
+  azure_pnp_init();
+  azure_pnp_set_telemetry_frequency(TELEMETRY_FREQUENCY_IN_SECONDS);
 
   Wire.setPins(2, 1); // SDA, SCL
 
