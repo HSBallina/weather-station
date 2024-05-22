@@ -121,7 +121,7 @@ int azure_pnp_send_telemetry(azure_iot_t* azure_iot)
   return RESULT_OK;
 }
 
-int azure_pnp_send_device_info(azure_iot_t* azure_iot, uint32_t request_id)
+int azurePnpSendDeviceInfo(azure_iot_t* azure_iot, uint32_t request_id)
 {
   _az_PRECONDITION_NOT_NULL(azure_iot);
 

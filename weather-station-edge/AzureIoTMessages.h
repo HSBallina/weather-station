@@ -39,7 +39,7 @@ const az_span azurePnpGetModelId();
  * invoked.
  * @return       int           0 if the function succeeds, non-zero if any error occurs.
  */
-int azure_pnp_send_device_info(azure_iot_t* azure_iot, uint32_t request_id);
+int azurePnpSendDeviceInfo(azure_iot_t* azure_iot, uint32_t request_id);
 
 /*
  * @brief     Sets with which minimum frequency this module should send telemetry to Azure IoT

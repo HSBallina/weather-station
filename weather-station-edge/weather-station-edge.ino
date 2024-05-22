@@ -392,7 +392,7 @@ void loop()
 
         if (send_device_info)
         {
-          (void)azure_pnp_send_device_info(&azure_iot, properties_request_id++);
+          (void)azurePnpSendDeviceInfo(&azure_iot, properties_request_id++);
           send_device_info = false; // Only need to send once.
         }
         else if (azure_pnp_send_telemetry(&azure_iot) != 0)
