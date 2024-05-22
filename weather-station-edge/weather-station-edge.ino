@@ -1,3 +1,9 @@
+/*
+  Weather Station Edge
+  This sketch reads temperature, humidity and pressure from BME280 sensors and sends the data to Azure IoT Central.
+
+  Part of the code is based on the Azure IoT SDK for C, available at https://github.com/Azure/azure-sdk-for-c-arduino
+*/ 
 #include <time.h>
 #include <Wire.h>
 #include <WiFi.h>
@@ -16,19 +22,34 @@
 
 #include "AzureIoT.h"
 #include "Azure_IoT_PnP_Template.h"
-#include "iot_configs.h"
 #include "secrets.h"
 
+#define VERSION "20240522g"
+
 #define SERIAL_LOGGER_BAUD_RATE 115200
-
-#define NTP_SERVERS "pool.ntp.org", "time.nist.gov"
-#define CET_TZ "CET-1CEST,M3.5.0,M10.5.0/3"
-#define VERSION "20240522f"
-
 #define MQTT_DO_NOT_RETAIN_MSG 0
+
+// Configuration for time sync. PSX_TZ is the POSIX timezone string.
+#define NTP_SERVERS "pool.ntp.org", "time.nist.gov"
+#define PSX_TZ "CET-1CEST,M3.5.0,M10.5.0/3"
+
+// Function returns
 #define RESULT_OK 0
 #define RESULT_ERROR __LINE__
 
+// User-agent (url-encoded) provided by the MQTT client to Azure IoT Services.
+// When developing for your own Arduino-based platform,
+// please update the suffix with the format '(ard;<platform>)' as an url-encoded string.
+#define AZURE_SDK_CLIENT_USER_AGENT "c%2F" AZ_SDK_VERSION_STRING "(ard%3Besp32)"
+
+// Publish 1 message every 10 seconds.
+#define TELEMETRY_FREQUENCY_IN_SECONDS 10
+
+// For how long the MQTT password (SAS token) is valid, in minutes.
+// After that, the sample automatically generates a new password and re-connects.
+#define MQTT_PASSWORD_LIFETIME_IN_MINUTES 60
+
+#define MQTT_PROTOCOL_PREFIX "mqtts://"
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
@@ -36,20 +57,18 @@ Adafruit_BME280 bmeIn;
 static azure_iot_config_t azure_iot_config;
 static azure_iot_t azure_iot;
 static esp_mqtt_client_handle_t mqtt_client;
-
 static uint32_t properties_request_id = 0;
-static bool send_device_info = true;
+static bool send_device_info = true; // Send device info once on first connect
 static bool azure_initial_connect = false; //Turns true when ESP32 successfully connects to Azure IoT Central for the first time
 
 #define AZ_IOT_DATA_BUFFER_SIZE 1500
 static uint8_t az_iot_data_buffer[AZ_IOT_DATA_BUFFER_SIZE];
 
-#define MQTT_PROTOCOL_PREFIX "mqtts://"
-
+// Function declarations
 static void initTime(String timezone);
 static void loggingFunction(log_level_t log_level, char const *const format, ...);
 static void connectWifi();
-static void configure_azure_iot();
+static void configureAzureIot();
 static esp_err_t esp_mqtt_event_handler(esp_mqtt_event_handle_t event);
 static char mqtt_broker_uri[128];
 
@@ -330,12 +349,12 @@ void setup()
   Serial.println("");
 
   connectWifi();
-  initTime(CET_TZ);
+  initTime(PSX_TZ);
 
   azure_pnp_init();
   azure_pnp_set_telemetry_frequency(TELEMETRY_FREQUENCY_IN_SECONDS);
 
-  configure_azure_iot();
+  configureAzureIot();
   azure_iot_start(&azure_iot);
 
   LogInfo("Azure IoT client initialized (state=%d)", azure_iot.state);
@@ -359,7 +378,7 @@ void loop()
     
     if (!azure_initial_connect)
     {
-      configure_azure_iot();
+      configureAzureIot();
     }
     
     azure_iot_start(&azure_iot);
@@ -426,7 +445,7 @@ void dumpReadings(sensor &s)
   LogInfo("Sending payload: %s", payload.c_str());
 }
 
-static void configure_azure_iot()
+static void configureAzureIot()
 {
   /*
    * The configuration structure used by Azure IoT must remain unchanged (including data buffer)
