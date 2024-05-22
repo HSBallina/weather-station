@@ -1,10 +1,25 @@
+#include <time.h>
 #include <Wire.h>
+#include <WiFi.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include "AzureIoT.h"
+
+#include "secrets.h"
+
+#define SERIAL_LOGGER_BAUD_RATE 115200
+
+#define NTP_SERVERS "pool.ntp.org", "time.nist.gov"
+
+#define CET_TZ "CET-1CEST,M3.5.0,M10.5.0/3"
 
 Adafruit_BME280 bmeOut;
 Adafruit_BME280 bmeIn;
-String version = "20240515a";
+const char* VERSION = "20240522b";
+
+static void initTime(String timezone);
+static void logging_function(log_level_t log_level, char const* const format, ...);
+static void connectWifi();
 
 struct readings {
   float temperature, humidity, pressure;
@@ -19,56 +34,133 @@ struct sensor {
 sensor outdoor = {bmeOut, "outdoor", 0x77};
 sensor indoor = {bmeIn, "indoor", 0x76};
 
+
 void setup() {
-  Serial.begin(115200);
-  delay(1000); // Give time to open serial monitor
-  Serial.println();
-  Serial.println("Weather Station " + version);
-  Serial.println();
+  Serial.begin(SERIAL_LOGGER_BAUD_RATE);
+
+  while(!Serial) {
+    delay(100);
+  }
+
+  set_logging_function(logging_function);
+
+  Serial.println("");
+  LogInfo("Weather Station %s", VERSION);
+  Serial.println("");
+
+  connectWifi();
+  initTime(CET_TZ);
 
   Wire.setPins(2, 1); // SDA, SCL
 
   initSensor(outdoor);
   initSensor(indoor);
+
+  LogInfo("Setup done");
+  Serial.println("");
 }
 
 void loop() {
-  dumpReadings(getReadings(outdoor));
-  delay(4000);
-  dumpReadings(getReadings(indoor));
-  delay(4000);
+  delay(10000);
+  dumpReadings(outdoor);
+  delay(10000);
+  dumpReadings(indoor);
 }
 
 void initSensor(sensor &s) {
-  Serial.print("Initializing " + s.name);
+  LogInfo("Initializing sensor %s", s.name);
 
   if(!s.sensor.begin(s.address)) {
-    Serial.println(" failed. Please check wiring and I2C address.");
+    LogError("Failed to initialize sensor %s", s.name);
     while(1);
   }
 
-  Serial.println(" done.");
-  Serial.println();
+  LogInfo("Initializing sensor %s done", s.name);
 }
 
 readings getReadings(sensor &s) {
-    Serial.println("-- Reading " + s.name + " --");
-    readings r = {s.sensor.readTemperature(), s.sensor.readHumidity(), s.sensor.readPressure() / 100.0F};
-    return r;
+    return {s.sensor.readTemperature(), s.sensor.readHumidity(), s.sensor.readPressure() / 100.0F};
 }
 
-void dumpReadings(readings r) {
-  Serial.print("Temperature = ");
-  Serial.print(r.temperature);
-  Serial.println(" *C");
+void dumpReadings(sensor &s) {
+  readings r = getReadings(s);
 
-  Serial.print("Pressure = ");
-  Serial.print(r.pressure);
-  Serial.println(" hPa");
+  String payload = "{\"sensor\": \"" + s.name + "\", \"temperature\": " + String(r.temperature) + ", \"humidity\": " + String(r.humidity) + ", \"pressure\": " + String(r.pressure) + "}";
+  LogInfo("Sending payload: %s", payload.c_str());
+}
 
-  Serial.print("Humidity = ");
-  Serial.print(r.humidity);
-  Serial.println(" %");
+static void connectWifi()
+{
+  LogInfo("Connecting to WiFi %s", WIFI_SSID);
 
-  Serial.println();
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  int i = 0;
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(100);
+    Serial.print(".");
+    i++;
+    if(i > 10) {
+      Serial.println("");
+      LogError("Failed to connect to WiFi %s", WIFI_SSID);
+      while(1);
+    }
+  }
+
+  Serial.println("");
+
+  LogInfo("WiFi connected, IP address: %s", WiFi.localIP().toString().c_str());
+}
+
+void setTimezone(String timezone) {
+  LogInfo("Setting timezone to %s", timezone.c_str());
+  setenv("TZ", timezone.c_str(), 1);
+  tzset();
+}
+
+static void initTime(String timezone) {
+  struct tm timeinfo;
+
+  LogInfo("Setting time using SNTP");
+
+  configTime(0, 0, NTP_SERVERS);
+  if(!getLocalTime(&timeinfo, 1000UL)) {
+    LogError("Failed to obtain time");
+    while(1);
+  }
+
+  setTimezone(timezone);
+}
+
+static void logging_function(log_level_t log_level, char const* const format, ...)
+{
+  struct tm ptm;
+
+  if(!getLocalTime(&ptm, 500UL)) {
+    time_t now = time(NULL);
+    struct tm* ptmp = gmtime(&now);
+    ptm = *ptmp;
+  }
+
+  Serial.print(&ptm, "%Y-%m-%d %H:%M:%S %z");
+
+  Serial.print(log_level == log_level_info ? " [INFO] " : " [ERROR] ");
+
+  char message[256];
+  va_list ap;
+  va_start(ap, format);
+  int message_length = vsnprintf(message, 256, format, ap);
+  va_end(ap);
+
+  if (message_length < 0)
+  {
+    Serial.println("Failed encoding log message (!)");
+  }
+  else
+  {
+    Serial.println(message);
+  }
 }
