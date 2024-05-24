@@ -5,6 +5,7 @@
   Part of the code is based on the Azure IoT SDK for C, available at https://github.com/Azure/azure-sdk-for-c-arduino
 */
 #include <time.h>
+#include <stdbool.h>
 #include <Wire.h>
 #include <WiFi.h>
 #include <Adafruit_Sensor.h>
