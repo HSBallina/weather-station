@@ -10,7 +10,6 @@
 #include <WiFi.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
-#include <Adafruit_NeoPixel.h>
 
 #include <mbedtls/base64.h>
 #include <mbedtls/md.h>
@@ -25,9 +24,10 @@
 #include "AzureIoT.h"
 #include "AzureIoTMessages.h"
 #include "WeatherData.h"
+#include "StatusLED.h"
 #include "secrets.h"
 
-#define VERSION "20240523a"
+#define VERSION "20240524b"
 
 #define SERIAL_LOGGER_BAUD_RATE 115200
 #define MQTT_DO_NOT_RETAIN_MSG 0
@@ -54,11 +54,6 @@
 
 #define MQTT_PROTOCOL_PREFIX "mqtts://"
 
-// LED stuff
-#define LED_PIN 8
-#define LED_COUNT 1
-Adafruit_NeoPixel pxl(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-
 static azure_iot_config_t azure_iot_config;
 static azure_iot_t azure_iot;
 static esp_mqtt_client_handle_t mqtt_client;
@@ -68,18 +63,6 @@ static bool azure_initial_connect = false; // Turns true when ESP32 successfully
 
 #define AZ_IOT_DATA_BUFFER_SIZE 1500
 static uint8_t az_iot_data_buffer[AZ_IOT_DATA_BUFFER_SIZE];
-
-enum Status_t
-{
-  STATUS_CONNECTING_WIFI,
-  STATUS_CONNECTING_AZURE,
-  STATUS_SETTING_TIME,
-  STATUS_WIFI_ERROR,
-  STATUS_AZURE_ERROR,
-  STATUS_TIME_ERROR,
-  STATUS_OK,
-  STATUS_ERROR
-};
 
 // Function declarations
 static void initTime(String timezone);
@@ -662,56 +645,6 @@ static void initTime(String timezone)
   tzset();
 
   LogInfo("Time set to %s", asctime(&timeinfo));
-}
-
-static void displayStatus(Status_t status)
-{
-  int blink = 0;
-  bool isError = false;
-
-  pxl.clear();
-
-  switch (status)
-  {
-  case STATUS_CONNECTING_WIFI:
-    pxl.setPixelColor(0, pxl.Color(0, 0, 255));
-    break;
-  case STATUS_CONNECTING_AZURE:
-    pxl.setPixelColor(0, pxl.Color(0, 255, 0));
-    break;
-  case STATUS_SETTING_TIME:
-    pxl.setPixelColor(0, pxl.Color(0, 255, 255));
-    break;
-  case STATUS_WIFI_ERROR:
-    pxl.setPixelColor(0, pxl.Color(255, 0, 0));
-    blink = 1;
-    isError = true;
-    break;
-  case STATUS_AZURE_ERROR:
-    pxl.setPixelColor(0, pxl.Color(255, 0, 0));
-    blink = 2;
-    isError = true;
-    break;
-  case STATUS_TIME_ERROR:
-    pxl.setPixelColor(0, pxl.Color(255, 0, 0));
-    blink = 3;
-    isError = true;
-    break;
-  case STATUS_OK:
-    pxl.setPixelColor(0, pxl.Color(0, 255, 0));
-    break;
-  case STATUS_ERROR:
-    pxl.setPixelColor(0, pxl.Color(255, 0, 0));
-    blink = 5;
-    isError = true;
-    break;
-  default:
-    break;
-  }
-
-  pxl.setBrightness(30);
-  pxl.show();
-
 }
 
 static void loggingFunction(log_level_t log_level, char const *const format, ...)
