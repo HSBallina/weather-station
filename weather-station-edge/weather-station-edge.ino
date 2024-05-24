@@ -67,7 +67,6 @@ static uint8_t az_iot_data_buffer[AZ_IOT_DATA_BUFFER_SIZE];
 // Function declarations
 static void initTime(String timezone);
 static void loggingFunction(log_level_t log_level, char const *const format, ...);
-static void displayStatus(enum Status_t status);
 static void connectWifi();
 static void configureAzureIot();
 static esp_err_t esp_mqtt_event_handler(esp_mqtt_event_handle_t event);
@@ -331,7 +330,7 @@ void setup()
   LogInfo("Weather Station %s", VERSION);
   Serial.println("");
 
-  pxl.begin();
+  initStatusLED();
 
   displayStatus(STATUS_CONNECTING_WIFI);
   connectWifi();
@@ -607,7 +606,9 @@ static void connectWifi()
       Serial.println("");
       LogError("Failed to connect to WiFi %s", WIFI_SSID);
       while (1)
-        ;
+      {
+        displayStatus(STATUS_WIFI_ERROR);
+      }
     }
   }
 

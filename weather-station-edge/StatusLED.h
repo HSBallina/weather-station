@@ -1,8 +1,6 @@
 #ifndef SATATUSLED_H
 #define SATATUSLED_H
 
-#include <Adafruit_NeoPixel.h>
-
 enum Status_t
 {
   STATUS_CONNECTING_WIFI,
@@ -15,11 +13,7 @@ enum Status_t
   STATUS_ERROR
 };
 
-#define LED_PIN 8
-#define LED_COUNT 1
-Adafruit_NeoPixel pxl(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-
+void initStatusLED();
 void displayStatus(Status_t status);
-
 
 #endif
