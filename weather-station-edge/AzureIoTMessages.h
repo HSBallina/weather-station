@@ -86,7 +86,7 @@ int azurePnpSendTelemetry(azure_iot_t* azure_iot);
  *
  * return        int                0 on success, non-zero if any failure occurs.
  */
-int azure_pnp_handle_command_request(azure_iot_t* azure_iot, command_request_t command_request);
+int azurePnpHandleCommandRequest(azure_iot_t* azure_iot, command_request_t command_request);
 
 /*
  * @brief     Handles a payload with writable properties received from Azure IoT Central.
@@ -103,7 +103,7 @@ int azure_pnp_handle_command_request(azure_iot_t* azure_iot, command_request_t c
  *
  * return        int           0 on success, non-zero if any failure occurs.
  */
-int azure_pnp_handle_properties_update(
+int azurePnpHandlePropertiesUpdate(
     azure_iot_t* azure_iot,
     az_span properties,
     uint32_t request_id);

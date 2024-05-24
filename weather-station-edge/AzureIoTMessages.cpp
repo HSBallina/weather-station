@@ -140,7 +140,7 @@ int azurePnpSendDeviceInfo(azure_iot_t *azure_iot, uint32_t request_id)
     return RESULT_OK;
 }
 
-int azure_pnp_handle_command_request(azure_iot_t *azure_iot, command_request_t command)
+int azurePnpHandleCommandRequest(azure_iot_t *azure_iot, command_request_t command)
 {
     _az_PRECONDITION_NOT_NULL(azure_iot);
 
@@ -179,7 +179,7 @@ int azure_pnp_handle_command_request(azure_iot_t *azure_iot, command_request_t c
         azure_iot, command.request_id, response_code, AZ_SPAN_EMPTY);
 }
 
-int azure_pnp_handle_properties_update(
+int azurePnpHandlePropertiesUpdate(
     azure_iot_t *azure_iot,
     az_span properties,
     uint32_t request_id)

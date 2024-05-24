@@ -287,7 +287,7 @@ void on_properties_received(az_span properties)
 
   // It is recommended not to perform work within callbacks.
   // The properties are being handled here to simplify the sample.
-  if (azure_pnp_handle_properties_update(&azure_iot, properties, properties_request_id++) != 0)
+  if (azurePnpHandlePropertiesUpdate(&azure_iot, properties, properties_request_id++) != 0)
   {
     LogError("Failed handling properties update.");
   }
@@ -312,7 +312,7 @@ static void on_command_request_received(command_request_t command)
   // Here the request is being processed within the callback that delivers the command request.
   // However, for production application the recommendation is to save `command` and process it
   // outside this callback, usually inside the main thread/task/loop.
-  (void)azure_pnp_handle_command_request(&azure_iot, command);
+  (void)azurePnpHandleCommandRequest(&azure_iot, command);
 }
 #pragma endregion
 
