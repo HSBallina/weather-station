@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 
 /*
- * Azure_IoT_PnP_Template.cpp implements the IoT Plug and Play template
+ * AzureIoTMessages.cpp implements the IoT Plug and Play template
  * specific for the Espressif ESP32 Azure IoT Kit board.
  */
 
-#ifndef AZURE_IOT_PNP_TEMPLATE_H
-#define AZURE_IOT_PNP_TEMPLATE_H
+#ifndef AZUREIOTMSG_H
+#define AZUREIOTMSG_H
 
 #include "AzureIoT.h"
 
@@ -16,7 +16,7 @@
  * @remark    It must be called once by the application, before any other function
  *            call related to Azure IoT.
  */
-void azure_pnp_init();
+void azurePnpInit();
 
 /*
  * @brief     Returns the model id of the IoT Plug and Play template implemented by this device.
@@ -24,7 +24,7 @@ void azure_pnp_init();
  *            device during Azure IoT provisioning and connection with the Azure IoT Hub.
  * @return    az_span       An `az_span` containing the model id implemented by this module.
  */
-const az_span azure_pnp_get_model_id();
+const az_span azurePnpGetModelId();
 
 /*
  * @brief     Sends the device description to Azure IoT Central.
@@ -39,12 +39,12 @@ const az_span azure_pnp_get_model_id();
  * invoked.
  * @return       int           0 if the function succeeds, non-zero if any error occurs.
  */
-int azure_pnp_send_device_info(azure_iot_t* azure_iot, uint32_t request_id);
+int azurePnpSendDeviceInfo(azure_iot_t* azure_iot, uint32_t request_id);
 
 /*
  * @brief     Sets with which minimum frequency this module should send telemetry to Azure IoT
  * Central.
- * @remark    `azure_pnp_send_telemetry` is used to send telemetry, but it will not send anything
+ * @remark    `azurePnpSendTelemetry` is used to send telemetry, but it will not send anything
  *            unless enough time has passed since the last telemetry has been published.
  *            This delay is defined internally by `telemetry_frequency_in_seconds`,
  *            set initially to once every 10 seconds.
@@ -52,7 +52,7 @@ int azure_pnp_send_device_info(azure_iot_t* azure_iot, uint32_t request_id);
  * @param[in]    frequency_in_seconds    Period of time, in seconds, to wait between two consecutive
  *                                       telemetry payloads are sent to Azure IoT Central.
  */
-void azure_pnp_set_telemetry_frequency(size_t frequency_in_seconds);
+void azurePnpSetTelemetryFrequency(size_t frequency_in_seconds);
 
 /*
  * @brief     Sends telemetry implemented by this IoT Plug and Play application to Azure IoT
@@ -62,16 +62,16 @@ void azure_pnp_set_telemetry_frequency(size_t frequency_in_seconds);
  *            The template defines telemetry data points for temperature, humidity,
  *            pressure, altitude, luminosity, magnetic field, rolling and pitch angles,
  *            as well as acceleration. All of these data are read from the board sensors and sent to
- *            Azure IoT Central when `azure_pnp_send_telemetry` is called.
+ *            Azure IoT Central when `azurePnpSendTelemetry` is called.
  *            This function must be called frequently enough, no slower than the frequency set
- *            with `azure_pnp_set_telemetry_frequency` (or the default frequency of 10 seconds).
+ *            with `azurePnpSetTelemetryFrequency` (or the default frequency of 10 seconds).
  *
  * @param[in]    azure_iot    A pointer to a azure_iot_t instance, previously initialized
  *                            with `azure_iot_init`.
  *
  * return        int          0 on success, non-zero if any failure occurs.
  */
-int azure_pnp_send_telemetry(azure_iot_t* azure_iot);
+int azurePnpSendTelemetry(azure_iot_t* azure_iot);
 
 /*
  * @brief     Handles a command when it is received from Azure IoT Central.
@@ -86,7 +86,7 @@ int azure_pnp_send_telemetry(azure_iot_t* azure_iot);
  *
  * return        int                0 on success, non-zero if any failure occurs.
  */
-int azure_pnp_handle_command_request(azure_iot_t* azure_iot, command_request_t command_request);
+int azurePnpHandleCommandRequest(azure_iot_t* azure_iot, command_request_t command_request);
 
 /*
  * @brief     Handles a payload with writable properties received from Azure IoT Central.
@@ -103,9 +103,9 @@ int azure_pnp_handle_command_request(azure_iot_t* azure_iot, command_request_t c
  *
  * return        int           0 on success, non-zero if any failure occurs.
  */
-int azure_pnp_handle_properties_update(
+int azurePnpHandlePropertiesUpdate(
     azure_iot_t* azure_iot,
     az_span properties,
     uint32_t request_id);
 
-#endif // AZURE_IOT_PNP_TEMPLATE_H
+#endif // AZUREIOTMSG_H
