@@ -1,0 +1,19 @@
+#ifndef SATATUSLED_H
+#define SATATUSLED_H
+
+enum Status_t
+{
+  STATUS_CONNECTING_WIFI,
+  STATUS_CONNECTING_AZURE,
+  STATUS_SETTING_TIME,
+  STATUS_WIFI_ERROR,
+  STATUS_AZURE_ERROR,
+  STATUS_TIME_ERROR,
+  STATUS_OK,
+  STATUS_ERROR
+};
+
+void initStatusLED();
+void displayStatus(Status_t status);
+
+#endif
