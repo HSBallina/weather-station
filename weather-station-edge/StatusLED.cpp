@@ -25,35 +25,43 @@ void displayStatus(Status_t status)
     {
     case STATUS_CONNECTING_WIFI:
         pxl.setPixelColor(0, pxl.Color(0, 0, 255));
+        pxl.setBrightness(LED_BRIGHTNESS);
+        pxl.show();
         break;
     case STATUS_CONNECTING_AZURE:
         pxl.setPixelColor(0, pxl.Color(255, 204, 31));
+        pxl.setBrightness(LED_BRIGHTNESS);
+        pxl.show();
         break;
     case STATUS_SETTING_TIME:
         pxl.setPixelColor(0, pxl.Color(138, 84, 255));
+        pxl.setBrightness(LED_BRIGHTNESS);
+        pxl.show();
         break;
     case STATUS_WIFI_ERROR:
-        pxl.setPixelColor(0, pxl.Color(255, 0, 0));
-
+        blink(1, 300, pxl.Color(255, 0, 0));
+        delay(1500);
         break;
     case STATUS_AZURE_ERROR:
-        pxl.setPixelColor(0, pxl.Color(255, 0, 0));
+        blink(3, 300, pxl.Color(255, 0, 0));
+        delay(1500);
         break;
     case STATUS_TIME_ERROR:
-        pxl.setPixelColor(0, pxl.Color(255, 0, 0));
+        blink(2, 300, pxl.Color(255, 0, 0));
+        delay(1500);
         break;
     case STATUS_OK:
         pxl.setPixelColor(0, pxl.Color(0, 255, 0));
+        pxl.setBrightness(LED_BRIGHTNESS - 10);
+        pxl.show();
         break;
     case STATUS_ERROR:
-        pxl.setPixelColor(0, pxl.Color(255, 0, 0));
+        blink(5, 500, pxl.Color(255, 0, 0));
+        delay(1500);
         break;
     default:
         break;
     }
-
-    pxl.setBrightness(LED_BRIGHTNESS);
-    pxl.show();
 }
 
 static void blink(int times, int delayMs, uint32_t color)

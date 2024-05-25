@@ -332,10 +332,8 @@ void setup()
 
   initStatusLED();
 
-  displayStatus(STATUS_CONNECTING_WIFI);
   connectWifi();
 
-  displayStatus(STATUS_SETTING_TIME);
   initTime(PSX_TZ);
 
   azurePnpInit();
@@ -589,6 +587,7 @@ static esp_err_t esp_mqtt_event_handler(esp_mqtt_event_handle_t event)
 static void connectWifi()
 {
   LogInfo("Connecting to WiFi %s", WIFI_SSID);
+  displayStatus(STATUS_CONNECTING_WIFI);
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
@@ -615,11 +614,13 @@ static void connectWifi()
   Serial.println("");
 
   LogInfo("WiFi connected, IP address: %s", WiFi.localIP().toString().c_str());
+  displayStatus(STATUS_OK);
 }
 
 static void initTime(String timezone)
 {
   LogInfo("Setting time using SNTP");
+  displayStatus(STATUS_SETTING_TIME);
 
   struct tm timeinfo;
   configTime(0, 0, NTP_SERVERS);
@@ -636,7 +637,9 @@ static void initTime(String timezone)
       Serial.println("");
       LogError("Failed to connect to WiFi %s", WIFI_SSID);
       while (1)
-        ;
+      {
+        displayStatus(STATUS_TIME_ERROR);
+      }
     }
   }
 
@@ -646,6 +649,7 @@ static void initTime(String timezone)
   tzset();
 
   LogInfo("Time set to %s", asctime(&timeinfo));
+  displayStatus(STATUS_OK);
 }
 
 static void loggingFunction(log_level_t log_level, char const *const format, ...)
